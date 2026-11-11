@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, Upload, Link as LinkIcon, Volume2 } from 'lucide-react';
+import { X, Upload, Link as LinkIcon, Volume2, Play, Square } from 'lucide-react';
 import { AudioPresetId, AudioSourceType, DayOfWeek, ScheduleItem, ScheduleMode } from '../types/schedule';
+import { playScheduleAudio, stopAllAudio } from '../utils/audioEngine';
 
 interface ScheduleModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [audioFileName, setAudioFileName] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
     if (editingItem) {

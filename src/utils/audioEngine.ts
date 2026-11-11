@@ -1,5 +1,18 @@
 import { AudioPresetId, ScheduleItem } from '../types/schedule';
 
+const localPresetModules = import.meta.glob('./*.{mp3,wav,ogg,m4a}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+function getLocalPresetUrl(preset: AudioPresetId): string | null {
+  const matchKey = Object.keys(localPresetModules).find((key) =>
+    key.toLowerCase().includes(preset.toLowerCase())
+  );
+  return matchKey ? localPresetModules[matchKey] : null;
+}
+
 let audioCtx: AudioContext | null = null;
 let currentHtmlAudio: HTMLAudioElement | null = null;
 let emergencyInterval: number | null = null;
@@ -97,6 +110,21 @@ function playToneSequence(
 
 export function playPresetSound(preset: AudioPresetId, onEnded?: () => void): void {
   stopAllAudio();
+  const localUrl = getLocalPresetUrl(preset);
+  if (localUrl) {
+    const audio = new Audio(localUrl);
+    currentHtmlAudio = audio;
+    audio.onended = () => {
+      currentHtmlAudio = null;
+      if (onEnded) onEnded();
+    };
+    audio.onerror = () => {
+      currentHtmlAudio = null;
+    };
+    audio.play().catch(() => {});
+    return;
+  }
+
   switch (preset) {
     case 'bao_thuc':
       // 1. Nhạc hiệu Báo thức (Reveille)
