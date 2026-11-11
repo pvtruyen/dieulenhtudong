@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, googleProvider, ADMIN_EMAIL, testFirestoreConnection } from './firebase';
 import { DEFAULT_SCHEDULES } from './data/defaultSchedules';
-import { ScheduleItem, ScheduleMode, SystemAudioStatus } from './types/schedule';
+import { CustomAudioPreset, ScheduleItem, ScheduleMode, SystemAudioStatus } from './types/schedule';
 import { RegistrationNotification, SubscriptionPlan, UserProfile } from './types/user';
 import { isUserAdmin } from './utils/subscription';
 import {
@@ -34,6 +34,7 @@ import {
   formatDateVN,
   formatMinutesRemaining,
   formatTimeHHMMSS,
+  getDateInTimezone,
   getNextSchedule,
   shouldTriggerSchedule,
 } from './utils/scheduleEngine';
@@ -95,6 +96,20 @@ export default function App() {
     return localStorage.getItem('gdqp_emergency_audio_v1') || '';
   });
   const [isEmergencyConfigOpen, setIsEmergencyConfigOpen] = useState(false);
+  const [timezone, setTimezone] = useState<string>(() => {
+    return localStorage.getItem('gdqp_timezone_v1') || 'Asia/Ho_Chi_Minh';
+  });
+  const [customPresets, setCustomPresets] = useState<CustomAudioPreset[]>(() => {
+    try {
+      const saved = localStorage.getItem('gdqp_custom_presets_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
+  const [newPresetLabel, setNewPresetLabel] = useState('');
+  const [newPresetUrl, setNewPresetUrl] = useState('');
 
   useEffect(() => {
     testFirestoreConnection();
@@ -195,7 +210,7 @@ export default function App() {
   // Real-time 1-second clock and schedule checker
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const current = new Date();
+      const current = getDateInTimezone(new Date(), timezone);
       setNow(current);
 
       if (audioStatusRef.current === 'emergency') return;
@@ -222,7 +237,7 @@ export default function App() {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [timezone]);
 
   const handleUnlockAudio = async () => {
     const ok = await unlockAudioContext();
@@ -467,7 +482,27 @@ export default function App() {
           className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-5 lg:grid-cols-12 lg:items-center"
         >
           <div className="lg:col-span-5">
-            <p className="text-xs font-semibold text-slate-500">{formatDateVN(now)}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-slate-500">{formatDateVN(now)}</p>
+              <select
+                aria-label="Chọn múi giờ"
+                value={timezone}
+                onChange={(e) => {
+                  const tz = e.target.value;
+                  setTimezone(tz);
+                  localStorage.setItem('gdqp_timezone_v1', tz);
+                  setNow(getDateInTimezone(new Date(), tz));
+                }}
+                className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 focus:border-[#2E5A27] focus:outline-none"
+              >
+                <option value="Asia/Ho_Chi_Minh">Việt Nam (UTC+7)</option>
+                <option value="local">Giờ thiết bị</option>
+                <option value="Asia/Tokyo">Tokyo (UTC+9)</option>
+                <option value="UTC">UTC (UTC+0)</option>
+                <option value="Europe/London">London</option>
+                <option value="America/New_York">New York</option>
+              </select>
+            </div>
             <div
               data-testid="realtime-clock"
               className="font-mono-tabular mt-1 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl"
@@ -604,6 +639,14 @@ export default function App() {
               </div>
               <button
                 type="button"
+                onClick={() => setIsPresetsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <Volume2 className="h-3.5 w-3.5 text-[#2E5A27]" />
+                <span>Âm thanh mẫu</span>
+              </button>
+              <button
+                type="button"
                 onClick={handleResetDefaults}
                 title="Khôi phục dữ liệu mẫu mặc định"
                 aria-label="Khôi phục mặc định"
@@ -636,6 +679,7 @@ export default function App() {
       <ScheduleModal
         isOpen={isModalOpen}
         editingItem={editingItem}
+        customPresets={customPresets}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveSchedule}
       />
@@ -720,6 +764,115 @@ export default function App() {
                 className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
               >
                 Xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isPresetsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="presets-modal-title"
+        >
+          <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 id="presets-modal-title" className="text-base font-semibold text-slate-900">
+              Quản lý Nguồn âm thanh mẫu
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Thêm hoặc xóa các âm thanh mẫu tùy chỉnh (MP3/WAV) để sử dụng khi tạo kịch bản.
+            </p>
+
+            <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <input
+                type="text"
+                value={newPresetLabel}
+                onChange={(e) => setNewPresetLabel(e.target.value)}
+                placeholder="Tên âm thanh mẫu (VD: Kèn chào cờ)"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-[#2E5A27] focus:outline-none"
+              />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="url"
+                  value={newPresetUrl.startsWith('data:') ? '' : newPresetUrl}
+                  onChange={(e) => setNewPresetUrl(e.target.value)}
+                  placeholder="Link URL MP3/WAV..."
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-[#2E5A27] focus:outline-none"
+                />
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                  <input
+                    type="file"
+                    accept="audio/mp3,audio/wav,audio/mpeg,audio/ogg"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || file.size > 3 * 1024 * 1024) return;
+                      if (!newPresetLabel) setNewPresetLabel(file.name.replace(/\.[^/.]+$/, ''));
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === 'string') setNewPresetUrl(reader.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  Tải file
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newPresetLabel.trim() || !newPresetUrl.trim()) return;
+                    const next: CustomAudioPreset[] = [
+                      ...customPresets,
+                      { id: `custom-${Date.now()}`, label: newPresetLabel.trim(), url: newPresetUrl.trim() },
+                    ];
+                    setCustomPresets(next);
+                    localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(next));
+                    setNewPresetLabel('');
+                    setNewPresetUrl('');
+                  }}
+                  className="rounded-lg bg-[#2E5A27] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#24471e]"
+                >
+                  Thêm
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 max-h-48 space-y-2 overflow-y-auto">
+              {customPresets.length === 0 ? (
+                <p className="text-center text-xs text-slate-500 py-3">
+                  Chưa có âm thanh mẫu tùy chỉnh nào.
+                </p>
+              ) : (
+                customPresets.map((cp) => (
+                  <div
+                    key={cp.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  >
+                    <span className="truncate font-medium text-slate-800">{cp.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = customPresets.filter((x) => x.id !== cp.id);
+                        setCustomPresets(next);
+                        localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(next));
+                      }}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsPresetsModalOpen(false)}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                Đóng
               </button>
             </div>
           </div>

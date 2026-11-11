@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { X, Upload, Link as LinkIcon, Volume2, Play, Square } from 'lucide-react';
-import { AudioPresetId, AudioSourceType, DayOfWeek, ScheduleItem, ScheduleMode } from '../types/schedule';
+import { AudioPresetId, AudioSourceType, CustomAudioPreset, DayOfWeek, ScheduleItem, ScheduleMode } from '../types/schedule';
 import { playScheduleAudio, stopAllAudio } from '../utils/audioEngine';
 
 interface ScheduleModalProps {
   isOpen: boolean;
   editingItem: ScheduleItem | null;
+  customPresets?: CustomAudioPreset[];
   onClose: () => void;
   onSave: (item: Omit<ScheduleItem, 'id'>, existingId?: string) => void;
 }
@@ -30,6 +31,7 @@ const PRESET_OPTIONS: Array<{ value: AudioPresetId; label: string }> = [
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   isOpen,
   editingItem,
+  customPresets = [],
   onClose,
   onSave,
 }) => {
@@ -38,7 +40,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [days, setDays] = useState<DayOfWeek[]>([1, 2, 3, 4, 5, 6, 0]);
   const [mode, setMode] = useState<ScheduleMode>('all');
   const [audioType, setAudioType] = useState<AudioSourceType>('preset');
-  const [audioPreset, setAudioPreset] = useState<AudioPresetId>('tap_hop');
+  const [audioPreset, setAudioPreset] = useState<string>('tap_hop');
   const [audioUrl, setAudioUrl] = useState('');
   const [audioFileName, setAudioFileName] = useState('');
   const [note, setNote] = useState('');
@@ -275,14 +277,25 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               <select
                 aria-label="Chọn âm thanh mẫu"
                 value={audioPreset}
-                onChange={(e) => setAudioPreset(e.target.value as AudioPresetId)}
+                onChange={(e) => setAudioPreset(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#2E5A27] focus:outline-none"
               >
-                {PRESET_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+                <optgroup label="Âm thanh chuẩn QĐND">
+                  {PRESET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
+                {customPresets.length > 0 && (
+                  <optgroup label="Âm thanh mẫu tùy chỉnh">
+                    {customPresets.map((cp) => (
+                      <option key={cp.id} value={cp.id}>
+                        {cp.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             )}
 

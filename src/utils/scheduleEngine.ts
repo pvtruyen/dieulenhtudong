@@ -1,5 +1,16 @@
 import { DayOfWeek, ScheduleItem, ScheduleMode } from '../types/schedule';
 
+export function getDateInTimezone(date: Date, timeZone: string): Date {
+  if (!timeZone || timeZone === 'local') return date;
+  try {
+    const invdate = new Date(date.toLocaleString('en-US', { timeZone }));
+    const diff = date.getTime() - invdate.getTime();
+    return new Date(date.getTime() - diff);
+  } catch {
+    return date;
+  }
+}
+
 export function formatTimeHHMM(date: Date): string {
   const hh = String(date.getHours()).padStart(2, '0');
   const mm = String(date.getMinutes()).padStart(2, '0');

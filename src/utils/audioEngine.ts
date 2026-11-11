@@ -108,9 +108,33 @@ function playToneSequence(
   }
 }
 
-export function playPresetSound(preset: AudioPresetId, onEnded?: () => void): void {
+export function playPresetSound(preset: AudioPresetId | string, onEnded?: () => void): void {
   stopAllAudio();
-  const localUrl = getLocalPresetUrl(preset);
+
+  try {
+    const saved = localStorage.getItem('gdqp_custom_presets_v1');
+    if (saved) {
+      const customList = JSON.parse(saved) as Array<{ id: string; url: string }>;
+      const found = customList.find((c) => c.id === preset);
+      if (found && found.url) {
+        const audio = new Audio(found.url);
+        currentHtmlAudio = audio;
+        audio.onended = () => {
+          currentHtmlAudio = null;
+          if (onEnded) onEnded();
+        };
+        audio.onerror = () => {
+          currentHtmlAudio = null;
+        };
+        audio.play().catch(() => {});
+        return;
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+
+  const localUrl = getLocalPresetUrl(preset as AudioPresetId);
   if (localUrl) {
     const audio = new Audio(localUrl);
     currentHtmlAudio = audio;

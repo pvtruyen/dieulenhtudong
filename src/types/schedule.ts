@@ -10,6 +10,12 @@ export type AudioPresetId =
   | 'bao_an'    // 3. Nhạc hiệu Báo ăn
   | 'tat_den';  // 4. Nhạc hiệu Tắt đèn đi ngủ
 
+export interface CustomAudioPreset {
+  id: string;
+  label: string;
+  url: string;
+}
+
 export interface ScheduleItem {
   id: string;
   name: string;
@@ -17,7 +23,7 @@ export interface ScheduleItem {
   days: DayOfWeek[]; // Empty or all 7 days
   mode: ScheduleMode;
   audioType: AudioSourceType;
-  audioPreset?: AudioPresetId;
+  audioPreset?: AudioPresetId | string;
   audioUrl?: string;
   audioFileName?: string;
   enabled: boolean;
