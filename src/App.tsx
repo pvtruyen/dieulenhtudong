@@ -132,6 +132,12 @@ export default function App() {
     }
   );
 
+  const accountId = user
+    ? user.uid
+    : localSession
+    ? `local_${localSession.username.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
+    : null;
+
   useEffect(() => {
     testFirestoreConnection();
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -181,8 +187,8 @@ export default function App() {
 
   // Sync user's schedules, presets, and audio settings from Firestore when signed in
   useEffect(() => {
-    if (!user) return;
-    const schedCol = collection(db, 'users', user.uid, 'schedules');
+    if (!accountId) return;
+    const schedCol = collection(db, 'users', accountId, 'schedules');
     const unsubSched = onSnapshot(schedCol, (snapshot) => {
       if (!snapshot.empty) {
         const cloudItems = snapshot.docs.map((d) => d.data() as ScheduleItem);
@@ -190,7 +196,7 @@ export default function App() {
       }
     });
 
-    const presetsCol = collection(db, 'users', user.uid, 'presets');
+    const presetsCol = collection(db, 'users', accountId, 'presets');
     const unsubPresets = onSnapshot(presetsCol, (snapshot) => {
       if (!snapshot.empty) {
         const cloudPresets = snapshot.docs.map((d) => d.data() as CustomAudioPreset);
@@ -199,7 +205,7 @@ export default function App() {
       }
     });
 
-    const settingsDoc = doc(db, 'users', user.uid, 'settings', 'audio');
+    const settingsDoc = doc(db, 'users', accountId, 'settings', 'audio');
     const unsubSettings = onSnapshot(settingsDoc, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as {
@@ -227,7 +233,7 @@ export default function App() {
       unsubPresets();
       unsubSettings();
     };
-  }, [user]);
+  }, [accountId]);
 
   // Admin listeners for users and registration notifications
   useEffect(() => {
@@ -381,8 +387,8 @@ export default function App() {
     emergencyUrl: string,
     tz: string
   ) => {
-    if (!user) return;
-    await setDoc(doc(db, 'users', user.uid, 'settings', 'audio'), {
+    if (!accountId) return;
+    await setDoc(doc(db, 'users', accountId, 'settings', 'audio'), {
       presetOverrides: overrides,
       emergencyAudioUrl: emergencyUrl,
       timezone: tz,
@@ -390,8 +396,8 @@ export default function App() {
   };
 
   const syncScheduleToCloud = async (item: ScheduleItem) => {
-    if (!user) return;
-    await setDoc(doc(db, 'users', user.uid, 'schedules', item.id), item);
+    if (!accountId) return;
+    await setDoc(doc(db, 'users', accountId, 'schedules', item.id), item);
   };
 
   const handleToggleSchedule = (id: string) => {
@@ -414,9 +420,9 @@ export default function App() {
       setAudioStatus(isAudioUnlocked() ? 'ready' : 'locked');
     }
     setSchedules((prev) => prev.filter((item) => item.id !== id));
-    if (user) {
+    if (accountId) {
       const { deleteDoc } = await import('firebase/firestore');
-      await deleteDoc(doc(db, 'users', user.uid, 'schedules', id));
+      await deleteDoc(doc(db, 'users', accountId, 'schedules', id));
     }
   };
 
@@ -1001,16 +1007,21 @@ export default function App() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!newPresetLabel.trim() || !newPresetUrl.trim()) return;
-                    const next: CustomAudioPreset[] = [
-                      ...customPresets,
-                      { id: `custom-${Date.now()}`, label: newPresetLabel.trim(), url: newPresetUrl.trim() },
-                    ];
+                    const newPreset: CustomAudioPreset = {
+                      id: `custom-${Date.now()}`,
+                      label: newPresetLabel.trim(),
+                      url: newPresetUrl.trim(),
+                    };
+                    const next = [...customPresets, newPreset];
                     setCustomPresets(next);
                     localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(next));
                     setNewPresetLabel('');
                     setNewPresetUrl('');
+                    if (accountId) {
+                      await setDoc(doc(db, 'users', accountId, 'presets', newPreset.id), newPreset);
+                    }
                   }}
                   className="rounded-lg bg-[#2E5A27] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#24471e]"
                 >
@@ -1033,10 +1044,14 @@ export default function App() {
                     <span className="truncate font-medium text-slate-800">{cp.label}</span>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const next = customPresets.filter((x) => x.id !== cp.id);
                         setCustomPresets(next);
                         localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(next));
+                        if (accountId) {
+                          const { deleteDoc } = await import('firebase/firestore');
+                          await deleteDoc(doc(db, 'users', accountId, 'presets', cp.id));
+                        }
                       }}
                       className="text-xs font-medium text-red-600 hover:underline"
                     >
