@@ -10,6 +10,7 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
+  Settings,
 } from 'lucide-react';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import {
@@ -90,6 +91,10 @@ export default function App() {
   const [notifications, setNotifications] = useState<RegistrationNotification[]>([]);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [emergencyAudioUrl, setEmergencyAudioUrl] = useState<string>(() => {
+    return localStorage.getItem('gdqp_emergency_audio_v1') || '';
+  });
+  const [isEmergencyConfigOpen, setIsEmergencyConfigOpen] = useState(false);
 
   useEffect(() => {
     testFirestoreConnection();
@@ -236,7 +241,7 @@ export default function App() {
     await unlockAudioContext();
     setPlayingId(null);
     setAudioStatus('emergency');
-    startEmergencyAlarm();
+    startEmergencyAlarm(emergencyAudioUrl);
   };
 
   const handleTestPlay = async (item: ScheduleItem) => {
@@ -528,20 +533,31 @@ export default function App() {
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleEmergencyToggle}
-              className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold text-white transition-colors ${
-                audioStatus === 'emergency'
-                  ? 'bg-slate-900 hover:bg-slate-800'
-                  : 'bg-[#D9534F] hover:bg-[#c9302c]'
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <span>
-                {audioStatus === 'emergency' ? 'DỪNG BÁO ĐỘNG' : 'BÁO ĐỘNG KHẨN CẤP'}
-              </span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleEmergencyToggle}
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold text-white transition-colors ${
+                  audioStatus === 'emergency'
+                    ? 'bg-slate-900 hover:bg-slate-800'
+                    : 'bg-[#D9534F] hover:bg-[#c9302c]'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span>
+                  {audioStatus === 'emergency' ? 'DỪNG BÁO ĐỘNG' : 'BÁO ĐỘNG KHẨN CẤP'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEmergencyConfigOpen(true)}
+                title="Tùy chỉnh âm thanh báo động khẩn cấp"
+                aria-label="Tùy chỉnh âm thanh báo động khẩn cấp"
+                className="rounded-lg border border-slate-300 bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </section>
 
@@ -632,6 +648,83 @@ export default function App() {
         onUpdatePlan={handleUpdateUserPlan}
         onMarkAllRead={handleMarkAllRead}
       />
+
+      {isEmergencyConfigOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="emergency-config-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 id="emergency-config-title" className="text-base font-semibold text-slate-900">
+              Tùy chỉnh âm thanh Báo động khẩn cấp
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Nhập link MP3/WAV hoặc tải tệp âm thanh từ máy. Để trống để dùng còi báo động mặc định.
+            </p>
+            <div className="mt-4 space-y-3">
+              <input
+                type="url"
+                aria-label="Link URL âm thanh báo động"
+                value={emergencyAudioUrl.startsWith('data:') ? '' : emergencyAudioUrl}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEmergencyAudioUrl(val);
+                  localStorage.setItem('gdqp_emergency_audio_v1', val);
+                }}
+                placeholder="https://example.com/coi-bao-dong.mp3"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-[#D9534F] focus:outline-none"
+              />
+              <div>
+                <input
+                  id="emergency-file-upload"
+                  type="file"
+                  accept="audio/mp3,audio/wav,audio/mpeg,audio/ogg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || file.size > 3 * 1024 * 1024) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        setEmergencyAudioUrl(reader.result);
+                        localStorage.setItem('gdqp_emergency_audio_v1', reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="emergency-file-upload"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Tải tệp MP3 / WAV từ máy
+                </label>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmergencyAudioUrl('');
+                  localStorage.removeItem('gdqp_emergency_audio_v1');
+                }}
+                className="text-xs font-medium text-slate-600 hover:text-slate-900"
+              >
+                Khôi phục còi mặc định
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEmergencyConfigOpen(false)}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                Xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

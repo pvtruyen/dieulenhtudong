@@ -208,8 +208,26 @@ export function playScheduleAudio(item: ScheduleItem, onEnded?: () => void): voi
   playPresetSound('tap_hop', onEnded);
 }
 
-export function startEmergencyAlarm(): void {
+export function startEmergencyAlarm(customUrl?: string): void {
   stopAllAudio();
+  if (customUrl && customUrl.trim()) {
+    const audio = new Audio(customUrl.trim());
+    audio.loop = true;
+    currentHtmlAudio = audio;
+    audio.play().catch(() => {
+      // Fallback to synthesized siren if custom URL fails
+      const triggerSirenCycle = () => {
+        playToneSequence([
+          { freq: 880, duration: 0.35, delay: 0.0, type: 'sawtooth' },
+          { freq: 622.25, duration: 0.35, delay: 0.38, type: 'sawtooth' },
+        ]);
+      };
+      triggerSirenCycle();
+      emergencyInterval = window.setInterval(triggerSirenCycle, 800);
+    });
+    return;
+  }
+
   const triggerSirenCycle = () => {
     playToneSequence([
       { freq: 880, duration: 0.35, delay: 0.0, type: 'sawtooth' },
