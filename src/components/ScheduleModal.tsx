@@ -20,12 +20,10 @@ const DAY_OPTIONS: Array<{ value: DayOfWeek; label: string }> = [
 ];
 
 const PRESET_OPTIONS: Array<{ value: AudioPresetId; label: string }> = [
-  { value: 'reveille', label: 'Kèn báo thức (Reveille)' },
-  { value: 'exercise', label: 'Nhạc hiệu thể dục sáng' },
-  { value: 'bell_class', label: 'Kẻng / Chuông lên lớp' },
-  { value: 'bell_meal', label: 'Kẻng báo ăn' },
-  { value: 'whistle_check', label: 'Còi kiểm tra nội vụ / Điểm danh' },
-  { value: 'taps', label: 'Nhạc hiệu tắt đèn đi ngủ' },
+  { value: 'bao_thuc', label: '1. Nhạc hiệu Báo thức' },
+  { value: 'tap_hop', label: '2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh' },
+  { value: 'bao_an', label: '3. Nhạc hiệu Báo ăn' },
+  { value: 'tat_den', label: '4. Nhạc hiệu Tắt đèn đi ngủ' },
 ];
 
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
@@ -39,7 +37,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [days, setDays] = useState<DayOfWeek[]>([1, 2, 3, 4, 5, 6, 0]);
   const [mode, setMode] = useState<ScheduleMode>('all');
   const [audioType, setAudioType] = useState<AudioSourceType>('preset');
-  const [audioPreset, setAudioPreset] = useState<AudioPresetId>('bell_class');
+  const [audioPreset, setAudioPreset] = useState<AudioPresetId>('tap_hop');
   const [audioUrl, setAudioUrl] = useState('');
   const [audioFileName, setAudioFileName] = useState('');
   const [note, setNote] = useState('');
@@ -52,7 +50,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setDays(editingItem.days);
       setMode(editingItem.mode);
       setAudioType(editingItem.audioType);
-      setAudioPreset(editingItem.audioPreset || 'bell_class');
+      setAudioPreset(editingItem.audioPreset || 'tap_hop');
       setAudioUrl(editingItem.audioUrl || '');
       setAudioFileName(editingItem.audioFileName || '');
       setNote(editingItem.note || '');
@@ -62,7 +60,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setDays([1, 2, 3, 4, 5, 6, 0]);
       setMode('all');
       setAudioType('preset');
-      setAudioPreset('bell_class');
+      setAudioPreset('tap_hop');
       setAudioUrl('');
       setAudioFileName('');
       setNote('');

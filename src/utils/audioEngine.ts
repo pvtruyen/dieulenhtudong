@@ -98,8 +98,8 @@ function playToneSequence(
 export function playPresetSound(preset: AudioPresetId, onEnded?: () => void): void {
   stopAllAudio();
   switch (preset) {
-    case 'reveille':
-      // Classic military bugle reveille pattern
+    case 'bao_thuc':
+      // 1. Nhạc hiệu Báo thức (Reveille)
       playToneSequence(
         [
           { freq: 523.25, duration: 0.18, delay: 0.0, type: 'sawtooth' },
@@ -112,53 +112,34 @@ export function playPresetSound(preset: AudioPresetId, onEnded?: () => void): vo
         onEnded
       );
       break;
-    case 'exercise':
-      // Upbeat marching cadence
+    case 'tap_hop':
+      // 2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh
       playToneSequence(
         [
-          { freq: 587.33, duration: 0.15, delay: 0.0, type: 'square' },
-          { freq: 587.33, duration: 0.15, delay: 0.2, type: 'square' },
-          { freq: 783.99, duration: 0.3, delay: 0.4, type: 'square' },
-          { freq: 659.25, duration: 0.15, delay: 0.75, type: 'square' },
-          { freq: 783.99, duration: 0.45, delay: 0.95, type: 'square' },
+          { freq: 587.33, duration: 0.2, delay: 0.0, type: 'sawtooth' },
+          { freq: 587.33, duration: 0.2, delay: 0.24, type: 'sawtooth' },
+          { freq: 880.0, duration: 0.45, delay: 0.48, type: 'sawtooth' },
+          { freq: 783.99, duration: 0.2, delay: 0.98, type: 'sawtooth' },
+          { freq: 880.0, duration: 0.55, delay: 1.22, type: 'sawtooth' },
         ],
         onEnded
       );
       break;
-    case 'bell_class':
-      // Crisp 3-chime school/unit bell
+    case 'bao_an':
+      // 3. Nhạc hiệu Báo ăn
       playToneSequence(
         [
-          { freq: 880, duration: 0.45, delay: 0.0, type: 'sine' },
-          { freq: 880, duration: 0.45, delay: 0.55, type: 'sine' },
-          { freq: 1174.66, duration: 0.75, delay: 1.1, type: 'sine' },
+          { freq: 659.25, duration: 0.25, delay: 0.0, type: 'triangle' },
+          { freq: 783.99, duration: 0.25, delay: 0.3, type: 'triangle' },
+          { freq: 659.25, duration: 0.25, delay: 0.6, type: 'triangle' },
+          { freq: 987.77, duration: 0.6, delay: 0.9, type: 'triangle' },
         ],
         onEnded
       );
       break;
-    case 'bell_meal':
-      // Warm metallic mess bell
-      playToneSequence(
-        [
-          { freq: 659.25, duration: 0.4, delay: 0.0, type: 'triangle' },
-          { freq: 783.99, duration: 0.4, delay: 0.45, type: 'triangle' },
-          { freq: 987.77, duration: 0.7, delay: 0.9, type: 'triangle' },
-        ],
-        onEnded
-      );
-      break;
-    case 'whistle_check':
-      // Sharp command whistle
-      playToneSequence(
-        [
-          { freq: 2400, duration: 0.25, delay: 0.0, type: 'sine' },
-          { freq: 2600, duration: 0.45, delay: 0.35, type: 'sine' },
-        ],
-        onEnded
-      );
-      break;
-    case 'taps':
-      // Calm evening lights-out chime
+    case 'tat_den':
+    default:
+      // 4. Nhạc hiệu Tắt đèn đi ngủ (Taps)
       playToneSequence(
         [
           { freq: 392.0, duration: 0.5, delay: 0.0, type: 'sine' },
@@ -174,7 +155,7 @@ export function playPresetSound(preset: AudioPresetId, onEnded?: () => void): vo
 export function playScheduleAudio(item: ScheduleItem, onEnded?: () => void): void {
   stopAllAudio();
   if (item.audioType === 'preset') {
-    playPresetSound(item.audioPreset || 'bell_class', onEnded);
+    playPresetSound(item.audioPreset || 'tap_hop', onEnded);
     return;
   }
 
@@ -188,15 +169,15 @@ export function playScheduleAudio(item: ScheduleItem, onEnded?: () => void): voi
     audio.onerror = () => {
       currentHtmlAudio = null;
       // Fallback to preset bell if external URL fails
-      playPresetSound('bell_class', onEnded);
+      playPresetSound('tap_hop', onEnded);
     };
     audio.play().catch(() => {
-      playPresetSound('bell_class', onEnded);
+      playPresetSound('tap_hop', onEnded);
     });
     return;
   }
 
-  playPresetSound('bell_class', onEnded);
+  playPresetSound('tap_hop', onEnded);
 }
 
 export function startEmergencyAlarm(): void {

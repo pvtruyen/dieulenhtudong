@@ -17,7 +17,7 @@ const sampleSchedules: ScheduleItem[] = [
     days: [1, 2, 3, 4, 5],
     mode: 'summer',
     audioType: 'preset',
-    audioPreset: 'reveille',
+    audioPreset: 'bao_thuc',
     enabled: true,
   },
   {
@@ -27,7 +27,7 @@ const sampleSchedules: ScheduleItem[] = [
     days: [1, 2, 3, 4, 5],
     mode: 'winter',
     audioType: 'preset',
-    audioPreset: 'reveille',
+    audioPreset: 'bao_thuc',
     enabled: true,
   },
   {
@@ -37,7 +37,7 @@ const sampleSchedules: ScheduleItem[] = [
     days: [0, 1, 2, 3, 4, 5, 6],
     mode: 'all',
     audioType: 'preset',
-    audioPreset: 'bell_meal',
+    audioPreset: 'bao_an',
     enabled: false,
   },
 ];
