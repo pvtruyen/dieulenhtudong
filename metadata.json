@@ -1,0 +1,6 @@
+{
+  "name": "Hệ thống Phát Điều lệnh GDQP-AN",
+  "description": "Hệ thống tự động phát điều lệnh, còi báo và quản lý thời gian biểu sinh hoạt cho Đơn vị Giáo dục Quốc phòng - An ninh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

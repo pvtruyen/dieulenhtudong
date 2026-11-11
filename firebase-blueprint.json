@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account, role, and subscription plan",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "plan": { "type": "string", "enum": ["trial", "annual", "expired"] },
+        "trialEndsAt": { "type": "string", "maxLength": 40 },
+        "subscriptionEndsAt": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "plan", "trialEndsAt", "createdAt"]
+    },
+    "ScheduleDoc": {
+      "title": "ScheduleDoc",
+      "description": "User schedule item synced to Firestore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "time": { "type": "string", "maxLength": 10 },
+        "mode": { "type": "string", "enum": ["all", "summer", "winter", "holiday"] },
+        "audioType": { "type": "string", "enum": ["preset", "url", "file"] },
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["id", "name", "time", "mode", "audioType", "enabled"]
+    },
+    "RegistrationNotification": {
+      "title": "RegistrationNotification",
+      "description": "Notification for admin when a new user registers",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and subscription status"
+    },
+    "/users/{userId}/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/ScheduleDoc" },
+      "description": "User's persisted schedule items"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/RegistrationNotification" },
+      "description": "Admin registration notifications"
+    }
+  }
+}
