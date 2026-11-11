@@ -110,6 +110,14 @@ export default function App() {
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
   const [newPresetLabel, setNewPresetLabel] = useState('');
   const [newPresetUrl, setNewPresetUrl] = useState('');
+  const [presetOverrides, setPresetOverrides] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('gdqp_preset_overrides_v1');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   useEffect(() => {
     testFirestoreConnection();
@@ -281,7 +289,14 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Không thể đăng nhập Google.');
+      const msg = err instanceof Error ? err.message : 'Không thể đăng nhập Google.';
+      if (msg.includes('auth/unauthorized-domain')) {
+        setAuthError(
+          `Tên miền hiện tại (${window.location.hostname}) chưa được cấp phép trong Firebase. Vào Firebase Console → Authentication → Settings → Authorized domains và thêm "${window.location.hostname}".`
+        );
+      } else {
+        setAuthError(msg);
+      }
     }
   };
 
@@ -450,6 +465,21 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        {authError && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <span>{authError}</span>
+            <button
+              type="button"
+              onClick={() => setAuthError('')}
+              className="shrink-0 text-xs font-semibold underline"
+            >
+              Đóng
+            </button>
+          </div>
+        )}
         {/* Emergency Banner if active */}
         {audioStatus === 'emergency' && (
           <div
@@ -776,13 +806,79 @@ export default function App() {
           aria-modal="true"
           aria-labelledby="presets-modal-title"
         >
-          <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
             <h2 id="presets-modal-title" className="text-base font-semibold text-slate-900">
               Quản lý Nguồn âm thanh mẫu
             </h2>
             <p className="mt-1 text-xs text-slate-500">
-              Thêm hoặc xóa các âm thanh mẫu tùy chỉnh (MP3/WAV) để sử dụng khi tạo kịch bản.
+              Tùy chỉnh 04 âm thanh mẫu sẵn có hoặc thêm âm thanh mẫu mới (MP3/WAV).
             </p>
+
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-semibold text-slate-700">04 Âm thanh mẫu sẵn có</p>
+              {(
+                [
+                  { id: 'bao_thuc', label: '1. Nhạc hiệu Báo thức' },
+                  { id: 'tap_hop', label: '2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh' },
+                  { id: 'bao_an', label: '3. Nhạc hiệu Báo ăn' },
+                  { id: 'tat_den', label: '4. Nhạc hiệu Tắt đèn đi ngủ' },
+                ] as const
+              ).map((item) => {
+                const hasOverride = Boolean(presetOverrides[item.id]);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-slate-800">{item.label}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {hasOverride ? 'Đã tùy chỉnh file riêng' : 'Đang dùng mặc định'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label className="cursor-pointer rounded border border-slate-300 bg-slate-50 px-2 py-1 font-medium text-slate-700 hover:bg-slate-100">
+                        <input
+                          type="file"
+                          accept="audio/mp3,audio/wav,audio/mpeg,audio/ogg"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || file.size > 3 * 1024 * 1024) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              if (typeof reader.result === 'string') {
+                                const next = { ...presetOverrides, [item.id]: reader.result };
+                                setPresetOverrides(next);
+                                localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(next));
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                        Đổi file
+                      </label>
+                      {hasOverride && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...presetOverrides };
+                            delete next[item.id];
+                            setPresetOverrides(next);
+                            localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(next));
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Mặc định
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-4 text-xs font-semibold text-slate-700">Thêm âm thanh mẫu khác</p>
 
             <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <input

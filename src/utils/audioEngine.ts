@@ -134,6 +134,29 @@ export function playPresetSound(preset: AudioPresetId | string, onEnded?: () => 
     // Ignore storage parse errors
   }
 
+  try {
+    const overridesRaw = localStorage.getItem('gdqp_preset_overrides_v1');
+    if (overridesRaw) {
+      const overrides = JSON.parse(overridesRaw) as Record<string, string>;
+      const overrideUrl = overrides[preset];
+      if (overrideUrl) {
+        const audio = new Audio(overrideUrl);
+        currentHtmlAudio = audio;
+        audio.onended = () => {
+          currentHtmlAudio = null;
+          if (onEnded) onEnded();
+        };
+        audio.onerror = () => {
+          currentHtmlAudio = null;
+        };
+        audio.play().catch(() => {});
+        return;
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+
   const localUrl = getLocalPresetUrl(preset as AudioPresetId);
   if (localUrl) {
     const audio = new Audio(localUrl);
