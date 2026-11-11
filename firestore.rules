@@ -32,6 +32,14 @@ service cloud.firestore {
       match /schedules/{scheduleId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      match /presets/{presetId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /notifications/{notificationId} {

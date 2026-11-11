@@ -118,6 +118,19 @@ export default function App() {
       return {};
     }
   });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [localSession, setLocalSession] = useState<{ username: string; isAdmin: boolean } | null>(
+    () => {
+      try {
+        const saved = localStorage.getItem('gdqp_local_session_v1');
+        return saved ? JSON.parse(saved) : null;
+      } catch {
+        return null;
+      }
+    }
+  );
 
   useEffect(() => {
     testFirestoreConnection();
@@ -166,17 +179,54 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Sync user's schedules from Firestore when signed in
+  // Sync user's schedules, presets, and audio settings from Firestore when signed in
   useEffect(() => {
     if (!user) return;
     const schedCol = collection(db, 'users', user.uid, 'schedules');
-    const unsub = onSnapshot(schedCol, (snapshot) => {
+    const unsubSched = onSnapshot(schedCol, (snapshot) => {
       if (!snapshot.empty) {
         const cloudItems = snapshot.docs.map((d) => d.data() as ScheduleItem);
         setSchedules(cloudItems);
       }
     });
-    return () => unsub();
+
+    const presetsCol = collection(db, 'users', user.uid, 'presets');
+    const unsubPresets = onSnapshot(presetsCol, (snapshot) => {
+      if (!snapshot.empty) {
+        const cloudPresets = snapshot.docs.map((d) => d.data() as CustomAudioPreset);
+        setCustomPresets(cloudPresets);
+        localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(cloudPresets));
+      }
+    });
+
+    const settingsDoc = doc(db, 'users', user.uid, 'settings', 'audio');
+    const unsubSettings = onSnapshot(settingsDoc, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as {
+          presetOverrides?: Record<string, string>;
+          emergencyAudioUrl?: string;
+          timezone?: string;
+        };
+        if (data.presetOverrides) {
+          setPresetOverrides(data.presetOverrides);
+          localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(data.presetOverrides));
+        }
+        if (typeof data.emergencyAudioUrl === 'string') {
+          setEmergencyAudioUrl(data.emergencyAudioUrl);
+          localStorage.setItem('gdqp_emergency_audio_v1', data.emergencyAudioUrl);
+        }
+        if (data.timezone) {
+          setTimezone(data.timezone);
+          localStorage.setItem('gdqp_timezone_v1', data.timezone);
+        }
+      }
+    });
+
+    return () => {
+      unsubSched();
+      unsubPresets();
+      unsubSettings();
+    };
   }, [user]);
 
   // Admin listeners for users and registration notifications
@@ -301,7 +351,42 @@ export default function App() {
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    if (user) {
+      await signOut(auth);
+    }
+    setLocalSession(null);
+    localStorage.removeItem('gdqp_local_session_v1');
+  };
+
+  const handleLocalLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const u = loginUsername.trim();
+    const p = loginPassword.trim();
+    if (!u || !p) {
+      setAuthError('Vui lòng nhập tên đăng nhập và mật khẩu.');
+      return;
+    }
+    const isAdminCreds = (u === 'admin' || u === ADMIN_EMAIL) && p === 'admin123';
+    const session = { username: u, isAdmin: isAdminCreds };
+    setLocalSession(session);
+    localStorage.setItem('gdqp_local_session_v1', JSON.stringify(session));
+    setIsLoginModalOpen(false);
+    setLoginUsername('');
+    setLoginPassword('');
+    setAuthError('');
+  };
+
+  const syncAudioSettingsToCloud = async (
+    overrides: Record<string, string>,
+    emergencyUrl: string,
+    tz: string
+  ) => {
+    if (!user) return;
+    await setDoc(doc(db, 'users', user.uid, 'settings', 'audio'), {
+      presetOverrides: overrides,
+      emergencyAudioUrl: emergencyUrl,
+      timezone: tz,
+    });
   };
 
   const syncScheduleToCloud = async (item: ScheduleItem) => {
@@ -419,7 +504,7 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isUserAdmin(userProfile) && (
+            {(isUserAdmin(userProfile) || localSession?.isAdmin) && (
               <button
                 type="button"
                 onClick={() => setIsAdminOpen(true)}
@@ -429,11 +514,11 @@ export default function App() {
                 <span>Quản trị</span>
               </button>
             )}
-            {user ? (
+            {user || localSession ? (
               <button
                 type="button"
                 onClick={handleSignOut}
-                title={user.email || ''}
+                title={user?.email || localSession?.username || ''}
                 className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -442,11 +527,11 @@ export default function App() {
             ) : (
               <button
                 type="button"
-                onClick={handleGoogleSignIn}
+                onClick={() => setIsLoginModalOpen(true)}
                 className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span>Đăng nhập Google</span>
+                <span>Đăng nhập</span>
               </button>
             )}
             <button
@@ -965,12 +1050,90 @@ export default function App() {
             <div className="mt-5 flex justify-end border-t border-slate-200 pt-4">
               <button
                 type="button"
-                onClick={() => setIsPresetsModalOpen(false)}
+                onClick={() => {
+                  syncAudioSettingsToCloud(presetOverrides, emergencyAudioUrl, timezone);
+                  setIsPresetsModalOpen(false);
+                }}
                 className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
               >
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isLoginModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-modal-title"
+        >
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 id="login-modal-title" className="text-base font-semibold text-slate-900">
+              Đăng nhập Hệ thống
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Đăng nhập bằng tài khoản tạm (Admin: <code className="font-mono">admin</code> /{' '}
+              <code className="font-mono">admin123</code>) hoặc tài khoản Google.
+            </p>
+            <form onSubmit={handleLocalLogin} className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  Tên đăng nhập
+                </label>
+                <input
+                  type="text"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="admin"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#2E5A27] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Mật khẩu</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#2E5A27] focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-[#2E5A27] px-4 py-2 text-sm font-semibold text-white hover:bg-[#24471e]"
+              >
+                Đăng nhập
+              </button>
+            </form>
+
+            <div className="my-4 flex items-center gap-2 text-xs text-slate-400">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span>hoặc</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoginModalOpen(false);
+                handleGoogleSignIn();
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Đăng nhập bằng Google</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsLoginModalOpen(false)}
+              className="mt-3 w-full text-center text-xs text-slate-500 hover:text-slate-900"
+            >
+              Hủy
+            </button>
           </div>
         </div>
       )}
