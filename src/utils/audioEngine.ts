@@ -6,7 +6,17 @@ const localPresetModules = import.meta.glob('./*.{mp3,wav,ogg,m4a}', {
   import: 'default',
 }) as Record<string, string>;
 
+const DEFAULT_ASSET_URLS: Record<AudioPresetId, string> = {
+  bao_thuc: '/assets/aistudio/bao_thuc_1bace03d.mp3',
+  tap_hop: '/assets/aistudio/tap_hop_1c046027.mp3',
+  bao_an: '/assets/aistudio/bao_an_3c12ac7d.mp3',
+  tat_den: '/assets/aistudio/tat_den_554d80ab.mp3',
+};
+
 function getLocalPresetUrl(preset: AudioPresetId): string | null {
+  if (DEFAULT_ASSET_URLS[preset]) {
+    return DEFAULT_ASSET_URLS[preset];
+  }
   const matchKey = Object.keys(localPresetModules).find((key) =>
     key.toLowerCase().includes(preset.toLowerCase())
   );

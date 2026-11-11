@@ -198,10 +198,23 @@ export default function App() {
 
     const presetsCol = collection(db, 'users', accountId, 'presets');
     const unsubPresets = onSnapshot(presetsCol, (snapshot) => {
-      if (!snapshot.empty) {
-        const cloudPresets = snapshot.docs.map((d) => d.data() as CustomAudioPreset);
-        setCustomPresets(cloudPresets);
-        localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(cloudPresets));
+      const cloudCustom: CustomAudioPreset[] = [];
+      const cloudOverrides: Record<string, string> = {};
+      snapshot.docs.forEach((d) => {
+        const data = d.data() as CustomAudioPreset;
+        if (['bao_thuc', 'tap_hop', 'bao_an', 'tat_den'].includes(data.id)) {
+          cloudOverrides[data.id] = data.url;
+        } else {
+          cloudCustom.push(data);
+        }
+      });
+      if (cloudCustom.length > 0) {
+        setCustomPresets(cloudCustom);
+        localStorage.setItem('gdqp_custom_presets_v1', JSON.stringify(cloudCustom));
+      }
+      if (Object.keys(cloudOverrides).length > 0) {
+        setPresetOverrides(cloudOverrides);
+        localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(cloudOverrides));
       }
     });
 
@@ -935,13 +948,25 @@ export default function App() {
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (!file || file.size > 3 * 1024 * 1024) return;
+                            if (!file) return;
+                            if (file.size > 700 * 1024) {
+                              setAuthError('Tệp âm thanh vượt quá 700KB. Vui lòng chọn tệp nhỏ hơn để lưu lên hệ thống.');
+                              return;
+                            }
                             const reader = new FileReader();
-                            reader.onload = () => {
+                            reader.onload = async () => {
                               if (typeof reader.result === 'string') {
-                                const next = { ...presetOverrides, [item.id]: reader.result };
+                                const url = reader.result;
+                                const next = { ...presetOverrides, [item.id]: url };
                                 setPresetOverrides(next);
                                 localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(next));
+                                if (accountId) {
+                                  await setDoc(doc(db, 'users', accountId, 'presets', item.id), {
+                                    id: item.id,
+                                    label: item.label,
+                                    url,
+                                  });
+                                }
                               }
                             };
                             reader.readAsDataURL(file);
@@ -952,11 +977,15 @@ export default function App() {
                       {hasOverride && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             const next = { ...presetOverrides };
                             delete next[item.id];
                             setPresetOverrides(next);
                             localStorage.setItem('gdqp_preset_overrides_v1', JSON.stringify(next));
+                            if (accountId) {
+                              const { deleteDoc } = await import('firebase/firestore');
+                              await deleteDoc(doc(db, 'users', accountId, 'presets', item.id));
+                            }
                           }}
                           className="text-red-600 hover:underline"
                         >
