@@ -5,6 +5,7 @@ import { DayOfWeek, ScheduleItem, ScheduleMode } from '../types/schedule';
 interface ScheduleTableProps {
   schedules: ScheduleItem[];
   playingId: string | null;
+  isAdmin: boolean;
   onToggle: (id: string) => void;
   onTestPlay: (item: ScheduleItem) => void;
   onEdit: (item: ScheduleItem) => void;
@@ -41,6 +42,7 @@ function formatDays(days: DayOfWeek[]): string {
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   schedules,
   playingId,
+  isAdmin,
   onToggle,
   onTestPlay,
   onEdit,
@@ -54,13 +56,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <p className="mt-1 text-sm text-slate-500">
           Thử thay đổi bộ lọc chế độ hoặc thêm một điều lệnh mới vào thời gian biểu.
         </p>
-        <button
-          type="button"
-          onClick={onAddNew}
-          className="mt-4 inline-flex items-center rounded-lg bg-[#2E5A27] px-4 py-2 text-sm font-medium text-white hover:bg-[#24471e]"
-        >
-          Thêm điều lệnh mới
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="mt-4 inline-flex items-center rounded-lg bg-[#2E5A27] px-4 py-2 text-sm font-medium text-white hover:bg-[#24471e]"
+          >
+            Thêm điều lệnh mới
+          </button>
+        )}
       </div>
     );
   }
@@ -108,9 +112,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       type="button"
                       role="switch"
                       aria-checked={item.enabled}
+                      disabled={!isAdmin}
                       aria-label={`Bật hoặc tắt ${item.name}`}
-                      onClick={() => onToggle(item.id)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2E5A27] focus:ring-offset-2 ${
+                      onClick={() => isAdmin && onToggle(item.id)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2E5A27] focus:ring-offset-2 ${
+                        isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                      } ${
                         item.enabled ? 'bg-[#2E5A27]' : 'bg-slate-300'
                       }`}
                     >
@@ -142,22 +149,26 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           {isPlaying ? 'Đang phát' : 'Phát thử'}
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onEdit(item)}
-                        aria-label={`Sửa ${item.name}`}
-                        className="rounded-md border border-slate-300 bg-white p-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(item.id)}
-                        aria-label={`Xóa ${item.name}`}
-                        className="rounded-md border border-slate-300 bg-white p-1.5 text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(item)}
+                            aria-label={`Sửa ${item.name}`}
+                            className="rounded-md border border-slate-300 bg-white p-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(item.id)}
+                            aria-label={`Xóa ${item.name}`}
+                            className="rounded-md border border-slate-300 bg-white p-1.5 text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

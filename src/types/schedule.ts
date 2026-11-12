@@ -8,7 +8,9 @@ export type AudioPresetId =
   | 'bao_thuc'  // 1. Nhạc hiệu Báo thức
   | 'tap_hop'   // 2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh
   | 'bao_an'    // 3. Nhạc hiệu Báo ăn
-  | 'tat_den';  // 4. Nhạc hiệu Tắt đèn đi ngủ
+  | 'tat_den'   // 4. Nhạc hiệu Tắt đèn đi ngủ
+  | 'chuong_reo' // 5. Chuông reo
+  | 'canh_bao';  // 6. Còi cảnh báo
 
 export interface CustomAudioPreset {
   id: string;
@@ -26,6 +28,7 @@ export interface ScheduleItem {
   audioPreset?: AudioPresetId | string;
   audioUrl?: string;
   audioFileName?: string;
+  repeatCount?: number;
   enabled: boolean;
   note?: string;
 }

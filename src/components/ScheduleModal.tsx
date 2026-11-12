@@ -26,6 +26,8 @@ const PRESET_OPTIONS: Array<{ value: AudioPresetId; label: string }> = [
   { value: 'tap_hop', label: '2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh' },
   { value: 'bao_an', label: '3. Nhạc hiệu Báo ăn' },
   { value: 'tat_den', label: '4. Nhạc hiệu Tắt đèn đi ngủ' },
+  { value: 'chuong_reo', label: '5. Chuông reo (Vào học / Giải lao / Nghỉ)' },
+  { value: 'canh_bao', label: '6. Còi cảnh báo' },
 ];
 
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({

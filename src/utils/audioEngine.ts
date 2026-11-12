@@ -11,6 +11,8 @@ const DEFAULT_ASSET_URLS: Record<AudioPresetId, string> = {
   tap_hop: '/assets/aistudio/tap_hop_1c046027.mp3',
   bao_an: '/assets/aistudio/bao_an_3c12ac7d.mp3',
   tat_den: '/assets/aistudio/tat_den_554d80ab.mp3',
+  chuong_reo: '/assets/aistudio/chuong_reo_a7d0e254.mp3',
+  canh_bao: '/assets/aistudio/canh_bao_1824aebd.mp3',
 };
 
 function getLocalPresetUrl(preset: AudioPresetId): string | null {
@@ -239,58 +241,62 @@ export function playPresetSound(preset: AudioPresetId | string, onEnded?: () => 
 
 export function playScheduleAudio(item: ScheduleItem, onEnded?: () => void): void {
   stopAllAudio();
-  if (item.audioType === 'preset') {
-    playPresetSound(item.audioPreset || 'tap_hop', onEnded);
-    return;
-  }
+  const totalRepeats = Math.max(1, item.repeatCount || 1);
+  let playedCount = 0;
 
-  if ((item.audioType === 'url' || item.audioType === 'file') && item.audioUrl) {
-    const audio = new Audio(item.audioUrl);
-    currentHtmlAudio = audio;
-    audio.onended = () => {
-      currentHtmlAudio = null;
-      if (onEnded) onEnded();
+  const playNext = () => {
+    playedCount += 1;
+    const handleDone = () => {
+      if (playedCount < totalRepeats) {
+        window.setTimeout(playNext, 350);
+      } else if (onEnded) {
+        onEnded();
+      }
     };
-    audio.onerror = () => {
-      currentHtmlAudio = null;
-      // Fallback to preset bell if external URL fails
-      playPresetSound('tap_hop', onEnded);
-    };
-    audio.play().catch(() => {
-      playPresetSound('tap_hop', onEnded);
-    });
-    return;
-  }
 
-  playPresetSound('tap_hop', onEnded);
+    if (item.audioType === 'preset') {
+      playPresetSound(item.audioPreset || 'tap_hop', handleDone);
+      return;
+    }
+
+    if ((item.audioType === 'url' || item.audioType === 'file') && item.audioUrl) {
+      const audio = new Audio(item.audioUrl);
+      currentHtmlAudio = audio;
+      audio.onended = () => {
+        currentHtmlAudio = null;
+        handleDone();
+      };
+      audio.onerror = () => {
+        currentHtmlAudio = null;
+        playPresetSound('tap_hop', handleDone);
+      };
+      audio.play().catch(() => {
+        playPresetSound('tap_hop', handleDone);
+      });
+      return;
+    }
+
+    playPresetSound('tap_hop', handleDone);
+  };
+
+  playNext();
 }
 
 export function startEmergencyAlarm(customUrl?: string): void {
   stopAllAudio();
-  if (customUrl && customUrl.trim()) {
-    const audio = new Audio(customUrl.trim());
-    audio.loop = true;
-    currentHtmlAudio = audio;
-    audio.play().catch(() => {
-      // Fallback to synthesized siren if custom URL fails
-      const triggerSirenCycle = () => {
-        playToneSequence([
-          { freq: 880, duration: 0.35, delay: 0.0, type: 'sawtooth' },
-          { freq: 622.25, duration: 0.35, delay: 0.38, type: 'sawtooth' },
-        ]);
-      };
-      triggerSirenCycle();
-      emergencyInterval = window.setInterval(triggerSirenCycle, 800);
-    });
-    return;
-  }
-
-  const triggerSirenCycle = () => {
-    playToneSequence([
-      { freq: 880, duration: 0.35, delay: 0.0, type: 'sawtooth' },
-      { freq: 622.25, duration: 0.35, delay: 0.38, type: 'sawtooth' },
-    ]);
-  };
-  triggerSirenCycle();
-  emergencyInterval = window.setInterval(triggerSirenCycle, 800);
+  const targetUrl = customUrl && customUrl.trim() ? customUrl.trim() : DEFAULT_ASSET_URLS.canh_bao;
+  const audio = new Audio(targetUrl);
+  audio.loop = true;
+  currentHtmlAudio = audio;
+  audio.play().catch(() => {
+    // Fallback to synthesized siren if audio fails
+    const triggerSirenCycle = () => {
+      playToneSequence([
+        { freq: 880, duration: 0.35, delay: 0.0, type: 'sawtooth' },
+        { freq: 622.25, duration: 0.35, delay: 0.38, type: 'sawtooth' },
+      ]);
+    };
+    triggerSirenCycle();
+    emergencyInterval = window.setInterval(triggerSirenCycle, 800);
+  });
 }

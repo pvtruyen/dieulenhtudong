@@ -138,6 +138,8 @@ export default function App() {
     ? `local_${localSession.username.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`
     : null;
 
+  const isAdmin = isUserAdmin(userProfile) || Boolean(localSession?.isAdmin);
+
   useEffect(() => {
     testFirestoreConnection();
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -553,17 +555,19 @@ export default function App() {
                 <span>Đăng nhập</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setEditingItem(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#2E5A27] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#24471e] sm:text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm điều lệnh</span>
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingItem(null);
+                  setIsModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#2E5A27] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#24471e] sm:text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Thêm điều lệnh</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -717,15 +721,17 @@ export default function App() {
                   {audioStatus === 'emergency' ? 'DỪNG BÁO ĐỘNG' : 'BÁO ĐỘNG KHẨN CẤP'}
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={() => setIsEmergencyConfigOpen(true)}
-                title="Tùy chỉnh âm thanh báo động khẩn cấp"
-                aria-label="Tùy chỉnh âm thanh báo động khẩn cấp"
-                className="rounded-lg border border-slate-300 bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setIsEmergencyConfigOpen(true)}
+                  title="Tùy chỉnh âm thanh báo động khẩn cấp"
+                  aria-label="Tùy chỉnh âm thanh báo động khẩn cấp"
+                  className="rounded-lg border border-slate-300 bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -771,30 +777,35 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-9 pr-3 text-sm text-slate-900 focus:border-[#2E5A27] focus:outline-none"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setIsPresetsModalOpen(true)}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <Volume2 className="h-3.5 w-3.5 text-[#2E5A27]" />
-                <span>Âm thanh mẫu</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleResetDefaults}
-                title="Khôi phục dữ liệu mẫu mặc định"
-                aria-label="Khôi phục mặc định"
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Mặc định</span>
-              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsPresetsModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Volume2 className="h-3.5 w-3.5 text-[#2E5A27]" />
+                    <span>Âm thanh mẫu</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetDefaults}
+                    title="Khôi phục dữ liệu mẫu mặc định"
+                    aria-label="Khôi phục mặc định"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Mặc định</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           <ScheduleTable
             schedules={filteredSchedules}
             playingId={playingId}
+            isAdmin={isAdmin}
             onToggle={handleToggleSchedule}
             onTestPlay={handleTestPlay}
             onEdit={(item) => {
@@ -926,6 +937,8 @@ export default function App() {
                   { id: 'tap_hop', label: '2. Nhạc hiệu Tập hợp / Lên lớp / Điểm danh' },
                   { id: 'bao_an', label: '3. Nhạc hiệu Báo ăn' },
                   { id: 'tat_den', label: '4. Nhạc hiệu Tắt đèn đi ngủ' },
+                  { id: 'chuong_reo', label: '5. Chuông reo (Vào học / Giải lao / Nghỉ)' },
+                  { id: 'canh_bao', label: '6. Còi cảnh báo' },
                 ] as const
               ).map((item) => {
                 const hasOverride = Boolean(presetOverrides[item.id]);
