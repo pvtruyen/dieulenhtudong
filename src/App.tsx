@@ -11,6 +11,8 @@ import {
   LogOut,
   ShieldCheck,
   Settings,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import {
@@ -48,6 +50,7 @@ import {
 import { ScheduleTable } from './components/ScheduleTable';
 import { ScheduleModal } from './components/ScheduleModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
+import { exportSchedulesToExcel, parseSchedulesFromExcel } from './utils/excelHelper';
 
 const STORAGE_KEY_SCHEDULES = 'gdqp_schedules_v1';
 const STORAGE_KEY_MODE = 'gdqp_mode_v1';
@@ -194,7 +197,12 @@ export default function App() {
     const unsubSched = onSnapshot(schedCol, (snapshot) => {
       if (!snapshot.empty) {
         const cloudItems = snapshot.docs.map((d) => d.data() as ScheduleItem);
-        setSchedules(cloudItems);
+        setSchedules((prev) => {
+          const merged = new Map<string, ScheduleItem>();
+          (prev.length > 0 ? prev : DEFAULT_SCHEDULES).forEach((item) => merged.set(item.id, item));
+          cloudItems.forEach((item) => merged.set(item.id, item));
+          return Array.from(merged.values());
+        });
       }
     });
 
@@ -777,8 +785,44 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-9 pr-3 text-sm text-slate-900 focus:border-[#2E5A27] focus:outline-none"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => exportSchedulesToExcel(schedules)}
+                title="Tải xuống file Excel (.xlsx)"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <Download className="h-3.5 w-3.5 text-[#2E5A27]" />
+                <span>Tải Excel</span>
+              </button>
               {isAdmin && (
                 <>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                    <Upload className="h-3.5 w-3.5 text-[#2E5A27]" />
+                    <span>Nhập Excel</span>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const imported = await parseSchedulesFromExcel(file);
+                          if (imported.length > 0) {
+                            setSchedules(imported);
+                            if (accountId) {
+                              for (const item of imported) {
+                                await setDoc(doc(db, 'users', accountId, 'schedules', item.id), item);
+                              }
+                            }
+                          }
+                        } catch {
+                          setAuthError('Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng.');
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() => setIsPresetsModalOpen(true)}

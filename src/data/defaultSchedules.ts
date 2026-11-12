@@ -4,7 +4,7 @@ export const DEFAULT_SCHEDULES: ScheduleItem[] = [
   {
     id: 'qd-01',
     name: 'Báo thức buổi sáng',
-    time: '06:00',
+    time: '05:30',
     days: [1, 2, 3, 4, 5, 6, 0],
     mode: 'all',
     audioType: 'preset',
@@ -72,6 +72,18 @@ export const DEFAULT_SCHEDULES: ScheduleItem[] = [
     repeatCount: 1,
     enabled: true,
     note: 'Toàn đơn vị ăn trưa tại nhà ăn',
+  },
+  {
+    id: 'qd-06b',
+    name: 'Báo thức buổi chiều',
+    time: '13:15',
+    days: [1, 2, 3, 4, 5, 6, 0],
+    mode: 'all',
+    audioType: 'preset',
+    audioPreset: 'bao_thuc',
+    repeatCount: 1,
+    enabled: true,
+    note: 'Báo thức sau giờ nghỉ trưa',
   },
   {
     id: 'qd-07',
